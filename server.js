@@ -60,7 +60,7 @@ if (PROTOCOL === 'WEBSOCKET') {
       ws.on('close', () => console.log('📱 Phone disconnected'));
     } 
     else if (isDashboard) {
-      console.log('📊 Dashboard connected (WebSocket)');
+      console.log('Dashboard connected (WebSocket)');
       dashboardClients.add(ws);
       ws.on('close', () => dashboardClients.delete(ws));
     }
@@ -179,7 +179,7 @@ app.get('/health', (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🎥 Video server (${PROTOCOL}) running on http://localhost:${PORT}`);
+  console.log(` Video server (${PROTOCOL}) running on http://localhost:${PORT}`);
   console.log(`   Protocol: ${PROTOCOL}`);
   console.log(`   Connection: See template for protocol-specific details`);
 });
