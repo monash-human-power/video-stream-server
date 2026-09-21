@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>MHP Phone Camera</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      max-width: 700px;
+      margin: 20px auto;
+      background: black;
+      border-radius: 8px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #startButton {
+      background: #2eaf5d;
+      color: white;
+    }
+
+    #stopButton {
+      background: #cc3b3b;
+      color: white;
+    }
+
+    #status {
+      font-weight: bold;
+    }
+
+    #error {
+      color: #ff7373;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>MHP Phone Camera</h1>
+
+  <p>
+    Status:
+    <span id="status">Disconnected</span>
+  </p>
+
+  <video
+    id="localVideo"
+    autoplay
+    muted
+    playsinline
+  ></video>
+
+  <button id="startButton">
+    Start Camera Stream
+  </button>
+
+  <button id="stopButton" disabled>
+    Stop Stream
+  </button>
+
+  <p id="stats">FPS: 0 | Bitrate: 0 kbps</p>
+  <p id="error"></p>
+
+  <script src="phone.js"></script>
+</body>
+</html>
