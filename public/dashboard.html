@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>MHP Video Dashboard</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    #remoteVideo {
+      display: block;
+      width: 100%;
+      max-width: 900px;
+      margin: 20px auto;
+      background: black;
+      border-radius: 8px;
+    }
+
+    #status {
+      font-weight: bold;
+    }
+
+    #error {
+      color: #ff7373;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>MHP Video Dashboard</h1>
+
+  <p>
+    Stream status:
+    <span id="status">Waiting</span>
+  </p>
+
+  <video
+    id="remoteVideo"
+    autoplay
+    muted
+    playsinline
+  ></video>
+
+  <p id="stats">FPS: 0 | Bitrate: 0 kbps</p>
+  <p id="error"></p>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

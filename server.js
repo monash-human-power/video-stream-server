@@ -9,177 +9,139 @@
 
 const express = require('express');
 const cors = require('cors');
-const http = require('http');
+const path = require('path');
 
 const app = express();
-app.use(cors());
-app.use(express.json());
-
-const server = http.createServer(app);
 
 const PORT = process.env.PORT || 3001;
 
-// TODO: Design Decision #1 - CHOOSE YOUR PROTOCOL
-// 
-// Option A: WebSocket (low latency, complex)
-// Option B: RTSP (standard, simpler, stateful)
-// Option C: RTMP (legacy, Adobe)
-// Option D: HLS (buffering, adaptive bitrate)
-// Option E: MediaMTX (Swiss Army knife, all protocols)
-//
-// Each has different trade-offs below:
-// Fill in which ONE you're using:
+// Your partner can change this address when MediaMTX is ready.
+const MEDIAMTX_URL =
+  process.env.MEDIAMTX_URL || 'http://localhost:8889';
 
-const PROTOCOL = process.env.PROTOCOL || 'WEBSOCKET'; // or 'RTSP', 'RTMP', 'HLS', 'MEDIAMTX'
+const STREAM_PATH =
+  process.env.STREAM_PATH || 'bike-camera';
 
-// ============================================
-// PROTOCOL A: WebSocket (Low Latency)
-// ============================================
-if (PROTOCOL === 'WEBSOCKET') {
-  const WebSocket = require('ws');
-  const wss = new WebSocket.Server({ server });
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-  const dashboardClients = new Set();
+// Stores the latest statistics from the phone and dashboard.
+const latestStats = {
+  phone: null,
+  dashboard: null,
+};
 
-  wss.on('connection', (ws, req) => {
-    const isPhone = req.url === '/phone-stream';
-    const isDashboard = req.url === '/dashboard-stream';
+// Stores open SSE connections.
+const eventClients = new Set();
 
-    if (isPhone) {
-      console.log('📱 Phone connected (WebSocket)');
-      
-      ws.on('message', (chunk) => {
-        // TODO: Your frame handling here
-        dashboardClients.forEach(client => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(chunk);
-          }
-        });
-      });
+function sendEvent(eventName, data) {
+  const message =
+    `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
 
-      ws.on('close', () => console.log('📱 Phone disconnected'));
-    } 
-    else if (isDashboard) {
-      console.log('Dashboard connected (WebSocket)');
-      dashboardClients.add(ws);
-      ws.on('close', () => dashboardClients.delete(ws));
-    }
-  });
+  for (const client of eventClients) {
+    client.write(message);
+  }
 }
 
-// ============================================
-// PROTOCOL B: RTSP (Standard, Stateful)
-// ============================================
-else if (PROTOCOL === 'RTSP') {
-  // TODO: Implement RTSP server
-  // Use library like: rtsp-server, rtsp-simple-server
-  // 
-  // RTSP Flow:
-  // 1. Phone: SETUP (create session)
-  // 2. Phone: RECORD (send video)
-  // 3. Dashboard: PLAY (request stream)
-  //
-  // Pros: Industry standard, stateful, clients understand it
-  // Cons: More complex, stateful connections, firewall issues
-  //
-  // Example with rtsp-simple-server:
-  // const { spawn } = require('child_process');
-  // spawn('rtsp-simple-server', ['rtsp-simple-server.yml']);
-  
-  console.log('RTSP server would run here (use rtsp-simple-server)');
-}
-
-// ============================================
-// PROTOCOL C: RTMP (Legacy, Adobe)
-// ============================================
-else if (PROTOCOL === 'RTMP') {
-  // TODO: Implement RTMP server
-  // Use library like: rtmp-server, wrtc-rtmp
-  //
-  // RTMP Flow:
-  // 1. Phone: CONNECT, CREATE STREAM
-  // 2. Phone: PUBLISH (send video)
-  // 3. Dashboard: SUBSCRIBE (watch stream)
-  //
-  // Pros: Legacy support, widely understood
-  // Cons: Falling out of favor, Adobe deprecated it, complex protocol
-  //
-  // Note: Most dashboards moved away from RTMP
-  
-  console.log('RTMP server would run here');
-}
-
-// ============================================
-// PROTOCOL D: HLS (HTTP Live Streaming)
-// ============================================
-else if (PROTOCOL === 'HLS') {
-  // TODO: Implement HLS server
-  // HLS = Break video into segments + manifest file
-  //
-  // Flow:
-  // 1. Phone: Encode H.264 → break into 2-second chunks
-  // 2. Server: Create .m3u8 playlist file
-  // 3. Dashboard: Load playlist, stream chunks
-  //
-  // Pros: Works over HTTP, adaptive bitrate, buffering
-  // Cons: Latency (buffering delay), complexity
-  //
-  // Library: hls-server, fluent-ffmpeg
-  
-  const hlsServer = require('hls-server');
-  
-  const hlsOptions = {
-    // TODO: Your HLS configuration
-    port: 3001,
-    chunk_size: 10,        // seconds per chunk
-    live: true,            // live stream vs VOD
-  };
-  
-  console.log('HLS server configured');
-}
-
-// ============================================
-// PROTOCOL E: MediaMTX (All-in-One)
-// ============================================
-else if (PROTOCOL === 'MEDIAMTX') {
-  // TODO: Use MediaMTX for all protocols at once
-  //
-  // MediaMTX = Gateway that handles:
-  // - RTSP input from phone
-  // - Outputs to HLS, DASH, WebRTC, RTMP
-  //
-  // Flow:
-  // 1. Phone: Publish RTSP to MediaMTX
-  // 2. Dashboard: Connect via HLS/WebRTC/RTSP (choose one)
-  //
-  // Pros: One tool handles everything, flexible
-  // Cons: Overkill if you only need one protocol
-  //
-  // Setup: Run MediaMTX separately, point to it
-  
-  const { spawn } = require('child_process');
-  
-  // MediaMTX config (would be in mediamtx.yml):
-  // paths:
-  //   all:
-  //     runOnReady: ffmpeg -i rtsp://localhost:8554/video -c:v libx264 -c:a aac -f flv rtmp://...
-  
-  console.log('MediaMTX would run here');
-}
-
-// ============================================
-// Generic Health Check
-// ============================================
+// Basic server test.
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'online', 
-    protocol: PROTOCOL,
-    // TODO: Add protocol-specific health info
+  res.json({
+    status: 'online',
+    protocol: 'WebRTC',
+    mediaServer: 'MediaMTX',
+    streamPath: STREAM_PATH,
   });
 });
 
-server.listen(PORT, () => {
-  console.log(` Video server (${PROTOCOL}) running on http://localhost:${PORT}`);
-  console.log(`   Protocol: ${PROTOCOL}`);
-  console.log(`   Connection: See template for protocol-specific details`);
+// Gives the WHIP and WHEP URLs to the browser.
+app.get('/api/stream-config', (req, res) => {
+  res.json({
+    streamPath: STREAM_PATH,
+    whipUrl: `${MEDIAMTX_URL}/${STREAM_PATH}/whip`,
+    whepUrl: `${MEDIAMTX_URL}/${STREAM_PATH}/whep`,
+    iceServers: [],
+  });
+});
+
+// Receives statistics from phone.js and dashboard.js.
+app.post('/api/stats', (req, res) => {
+  const stats = req.body;
+
+  if (stats.device !== 'phone' && stats.device !== 'dashboard') {
+    return res.status(400).json({
+      error: 'Device must be phone or dashboard',
+    });
+  }
+
+  latestStats[stats.device] = {
+    ...stats,
+    receivedAt: new Date().toISOString(),
+  };
+
+  sendEvent('stats', latestStats[stats.device]);
+
+  res.json({
+    message: 'Statistics received',
+  });
+});
+
+// Returns the latest stored statistics.
+app.get('/api/stats', (req, res) => {
+  res.json(latestStats);
+});
+
+// Receives phone and dashboard connection updates.
+app.post('/api/status', (req, res) => {
+  const statusUpdate = {
+    ...req.body,
+    receivedAt: new Date().toISOString(),
+  };
+
+  console.log('Status update:', statusUpdate);
+
+  sendEvent('status', statusUpdate);
+
+  res.json({
+    message: 'Status received',
+  });
+});
+
+// Opens an SSE connection for dashboard updates.
+app.get('/api/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  res.flushHeaders();
+
+  eventClients.add(res);
+
+  res.write(
+    `event: status\ndata: ${JSON.stringify({
+      device: 'server',
+      status: 'connected',
+    })}\n\n`
+  );
+
+  const keepAlive = setInterval(() => {
+    res.write(': keep-alive\n\n');
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    eventClients.delete(res);
+  });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Node server: http://localhost:${PORT}`);
+  console.log(`Phone page: http://localhost:${PORT}/phone.html`);
+  console.log(`Dashboard: http://localhost:${PORT}/dashboard.html`);
+  console.log(
+    `WHIP: ${MEDIAMTX_URL}/${STREAM_PATH}/whip`
+  );
+  console.log(
+    `WHEP: ${MEDIAMTX_URL}/${STREAM_PATH}/whep`
+  );
 });
